@@ -17,8 +17,10 @@ export default function Editor({ content, onChange, readOnly = false }: EditorPr
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // StarterKit already bundles Heading, BulletList, OrderedList, Bold, Italic, etc.
+        // StarterKit bundles Heading, BulletList, OrderedList, Bold, Italic, etc.
+        // Disable underline here since we register it explicitly below
         heading: { levels: [1, 2, 3] },
+        underline: false,
       }),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),

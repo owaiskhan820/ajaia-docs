@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface User {
   id: number;
@@ -24,8 +24,20 @@ const USERS: User[] = [
 ];
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Loading…</div>}>
+      <HomePageInner />
+    </Suspense>
+  );
+}
+
+function HomePageInner() {
   const router = useRouter();
-  const [userId, setUserId] = useState<number>(1);
+  const searchParams = useSearchParams();
+  const [userId, setUserId] = useState<number>(() => {
+    const id = searchParams.get("userId");
+    return id ? Number(id) : 1;
+  });
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
