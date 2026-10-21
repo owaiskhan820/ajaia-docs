@@ -43,8 +43,8 @@ URL: (add after recording)
 
 - No real authentication (seeded users + dropdown)
 - No real-time collaboration
-- No .docx upload support (documented tradeoff -- see ARCHITECTURE.md)
 - No document version history (stretch goal)
+- **Inline commenting** — the share dialog exposes a "Commenter" permission level (read-only access) but there is no comment thread UI. Full inline commenting requires a `comments` table, a Tiptap anchor extension to highlight selections, and a sidebar to display threads. The data model and permission level are already stubbed; the UI was cut due to time. This would be the first thing I would build next.
 
 ## What I would build next with 2-4 more hours
 
