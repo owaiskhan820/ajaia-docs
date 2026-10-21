@@ -4,6 +4,7 @@ import sql from "@/lib/db";
 type Params = { params: Promise<{ id: string }> };
 
 // GET /api/documents/:id?userId=1
+// Returns document + userPermission: 'owner' | 'editor' | 'commenter' | 'viewer'
 export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   const userId = _req.nextUrl.searchParams.get("userId");
@@ -20,25 +21,27 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 
   const doc = rows[0];
+  let userPermission: "owner" | "editor" | "commenter" | "viewer" = "owner";
 
-  // Access check: must be owner or have a share record
   if (userId) {
     const uid = Number(userId);
     if (doc.owner_id !== uid) {
       const shareRows = await sql`
-        SELECT 1 FROM shares WHERE document_id = ${Number(id)} AND shared_with_user_id = ${uid}
+        SELECT permission FROM shares
+        WHERE document_id = ${Number(id)} AND shared_with_user_id = ${uid}
       `;
       if (!shareRows.length) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      userPermission = shareRows[0].permission as "editor" | "commenter" | "viewer";
     }
   }
 
-  return NextResponse.json(doc);
+  return NextResponse.json({ ...doc, userPermission });
 }
 
 // PATCH /api/documents/:id
-// Body: { title?, content?, userId }  (userId used to verify ownership for renames)
+// Body: { title?, content?, userId }
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json().catch(() => null);
@@ -46,7 +49,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { title, content, userId } = body;
 
-  // Verify the caller has access (owner or share)
   const doc = await sql`SELECT owner_id FROM documents WHERE id = ${Number(id)}`;
   if (!doc.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -54,15 +56,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const uid = Number(userId);
     if (doc[0].owner_id !== uid) {
       const shareRows = await sql`
-        SELECT 1 FROM shares WHERE document_id = ${Number(id)} AND shared_with_user_id = ${uid}
+        SELECT permission FROM shares
+        WHERE document_id = ${Number(id)} AND shared_with_user_id = ${uid}
       `;
       if (!shareRows.length) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
+      // Viewers and commenters cannot edit content
+      if (shareRows[0].permission === "viewer" || shareRows[0].permission === "commenter") {
+        return NextResponse.json({ error: "You have view-only access to this document" }, { status: 403 });
+      }
     }
   }
 
-  // Build the update — only set fields that were provided
   const updated = await sql`
     UPDATE documents
     SET
@@ -77,7 +83,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // DELETE /api/documents/:id
-// Body: { userId } — only owner may delete
 export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json().catch(() => ({}));

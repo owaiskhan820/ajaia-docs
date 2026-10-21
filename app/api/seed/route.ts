@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import sql from "@/lib/db";
 
-// POST /api/seed — idempotently creates tables and seeds Alice / Bob / Carol.
-// Safe to call multiple times; uses CREATE TABLE IF NOT EXISTS + ON CONFLICT DO NOTHING.
 export async function POST() {
   try {
     await sql`
@@ -28,8 +26,14 @@ export async function POST() {
         id                  SERIAL PRIMARY KEY,
         document_id         INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
         shared_with_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        permission          TEXT    NOT NULL DEFAULT 'editor',
         UNIQUE(document_id, shared_with_user_id)
       )
+    `;
+
+    // Migrate existing shares table: add permission column if it doesn't exist
+    await sql`
+      ALTER TABLE shares ADD COLUMN IF NOT EXISTS permission TEXT NOT NULL DEFAULT 'editor'
     `;
 
     await sql`
@@ -41,9 +45,6 @@ export async function POST() {
     return NextResponse.json({ ok: true, users });
   } catch (err) {
     console.error("Seed failed:", err);
-    return NextResponse.json(
-      { ok: false, error: String(err) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }

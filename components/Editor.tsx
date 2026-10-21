@@ -11,14 +11,20 @@ interface EditorProps {
   content: string;
   onChange?: (html: string) => void;
   readOnly?: boolean;
+  lineSpacing?: number;
+  onLineSpacingChange?: (v: number) => void;
 }
 
-export default function Editor({ content, onChange, readOnly = false }: EditorProps) {
+export default function Editor({
+  content,
+  onChange,
+  readOnly = false,
+  lineSpacing = 1.5,
+  onLineSpacingChange,
+}: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        // StarterKit bundles Heading, BulletList, OrderedList, Bold, Italic, etc.
-        // Disable underline here since we register it explicitly below
         heading: { levels: [1, 2, 3] },
         underline: false,
       }),
@@ -33,35 +39,37 @@ export default function Editor({ content, onChange, readOnly = false }: EditorPr
     immediatelyRender: false,
   });
 
-  // Sync external content changes (e.g. after load from DB)
   useEffect(() => {
     if (editor && editor.getHTML() !== content) {
       editor.commands.setContent(content, { emitUpdate: false });
     }
   }, [content, editor]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      // Ctrl/Cmd+S: manual save shortcut — bubble to parent via synthetic form submit
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-        e.preventDefault();
-        document.dispatchEvent(new CustomEvent("editor:save"));
-      }
-    },
-    []
-  );
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      document.dispatchEvent(new CustomEvent("editor:save"));
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
-      {!readOnly && editor && <Toolbar editor={editor} />}
-      <div
-        onKeyDown={handleKeyDown}
-        className="flex-1 overflow-auto"
-      >
-        <EditorContent
+      {!readOnly && editor && onLineSpacingChange && (
+        <Toolbar
           editor={editor}
-          className="prose prose-sm sm:prose-base max-w-none min-h-[500px] p-6 focus-within:outline-none"
+          lineSpacing={lineSpacing}
+          onLineSpacingChange={onLineSpacingChange}
         />
+      )}
+      <div onKeyDown={handleKeyDown} className="flex-1 overflow-auto bg-[#f8f9fa]">
+        <div className="mx-auto my-8 bg-white shadow-sm"
+          style={{ maxWidth: 816, minHeight: 1056, padding: "96px 96px 80px" }}>
+          <EditorContent
+            editor={editor}
+            style={{ lineHeight: lineSpacing }}
+            className="prose prose-sm sm:prose-base max-w-none focus-within:outline-none"
+          />
+        </div>
       </div>
     </div>
   );

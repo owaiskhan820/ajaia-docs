@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import sql from "@/lib/db";
-import { validateUploadedFile, textToHtml } from "@/lib/upload-validator";
+import { validateUploadedFile, textToHtml, csvToHtml } from "@/lib/upload-validator";
 
-// POST /api/upload
-// Accepts multipart/form-data: file (File), ownerId (string).
-// Supported types: .txt and .md only (max 1 MB).
-// Converts the file content into a new editable Tiptap document.
 export async function POST(req: NextRequest) {
   const formData = await req.formData().catch(() => null);
   if (!formData) {
@@ -23,9 +19,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: validation.error }, { status: 415 });
   }
 
-  const rawText = await file.text();
-  const html = textToHtml(rawText);
-  const title = file.name.replace(/\.(txt|md)$/i, "") || "Uploaded document";
+  const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  const title = file.name.replace(/\.(txt|md|html|htm|csv|docx|pdf)$/i, "") || "Uploaded document";
+
+  let html = "";
+
+  try {
+    if (ext === ".docx") {
+      const mammoth = await import("mammoth");
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const result = await mammoth.convertToHtml({ buffer });
+      html = result.value || "<p></p>";
+    } else if (ext === ".pdf") {
+      const pdfParse = (await import("pdf-parse")).default;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const data = await pdfParse(buffer);
+      html = textToHtml(data.text);
+    } else if (ext === ".html" || ext === ".htm") {
+      const raw = await file.text();
+      // Strip <html>/<head>/<body> wrappers, keep inner content
+      const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      html = bodyMatch ? bodyMatch[1].trim() : raw;
+    } else if (ext === ".csv") {
+      const raw = await file.text();
+      html = csvToHtml(raw);
+    } else {
+      // .txt and .md
+      const rawText = await file.text();
+      html = textToHtml(rawText);
+    }
+  } catch (err) {
+    console.error("File conversion error:", err);
+    return NextResponse.json({ error: "Failed to convert file. It may be corrupt or encrypted." }, { status: 422 });
+  }
 
   const rows = await sql`
     INSERT INTO documents (title, content, owner_id)

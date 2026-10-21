@@ -3,9 +3,21 @@
  * Kept separate so they can be tested without a DB connection.
  */
 
-export const ALLOWED_EXTENSIONS = [".txt", ".md"] as const;
-export const ALLOWED_MIME_TYPES = ["text/plain", "text/markdown"] as const;
-export const MAX_FILE_SIZE = 1_048_576; // 1 MB
+export const ALLOWED_EXTENSIONS = [".txt", ".md", ".html", ".htm", ".csv", ".docx", ".pdf"] as const;
+
+export const ALLOWED_MIME_TYPES = [
+  "text/plain",
+  "text/markdown",
+  "text/html",
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/pdf",
+  // browsers sometimes send these for docx/pdf
+  "application/octet-stream",
+  "application/zip",
+] as const;
+
+export const MAX_FILE_SIZE = 10_485_760; // 10 MB
 
 export interface ValidationResult {
   valid: boolean;
@@ -19,15 +31,16 @@ export function validateUploadedFile(
 ): ValidationResult {
   const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
 
-  if (
-    !ALLOWED_MIME_TYPES.includes(mimeType as (typeof ALLOWED_MIME_TYPES)[number]) &&
-    !ALLOWED_EXTENSIONS.includes(ext as (typeof ALLOWED_EXTENSIONS)[number])
-  ) {
-    return { valid: false, error: "Only .txt and .md files are supported" };
+  const extOk = ALLOWED_EXTENSIONS.includes(ext as (typeof ALLOWED_EXTENSIONS)[number]);
+  if (!extOk) {
+    return {
+      valid: false,
+      error: "Unsupported file type. Allowed: .txt, .md, .html, .csv, .docx, .pdf",
+    };
   }
 
   if (sizeBytes > MAX_FILE_SIZE) {
-    return { valid: false, error: "File must be under 1 MB" };
+    return { valid: false, error: "File must be under 10 MB" };
   }
 
   return { valid: true };
@@ -44,4 +57,16 @@ export function textToHtml(rawText: string): string {
       para.trim() ? `<p>${para.replace(/\r?\n/g, "<br>")}</p>` : "<p></p>"
     )
     .join("\n");
+}
+
+/** Convert CSV rows to an HTML table */
+export function csvToHtml(csvText: string): string {
+  const rows = csvText.trim().split(/\r?\n/).map((row) =>
+    row.split(",").map((cell) => cell.replace(/^"|"$/g, "").trim())
+  );
+  if (!rows.length) return "<p></p>";
+  const [header, ...body] = rows;
+  const headerHtml = `<tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+  const bodyHtml = body.map((row) => `<tr>${row.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("\n");
+  return `<table>${headerHtml}${bodyHtml}</table>`;
 }
