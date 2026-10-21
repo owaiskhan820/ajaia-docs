@@ -12,7 +12,7 @@
 
 ## Live deployment
 
-URL: (add after Vercel deployment)
+URL: https://ajaia-docs-eo799c0cd-owaiskhan820s-projects.vercel.app
 
 ## Test accounts
 
@@ -25,7 +25,7 @@ No password needed. To demonstrate sharing: create a document as Alice, click Sh
 
 ## Walkthrough video
 
-URL: (add after recording)
+URL: https://www.loom.com/share/f784fdd105cb4a7d8138df8dbf1b2998
 
 ## What is working
 
