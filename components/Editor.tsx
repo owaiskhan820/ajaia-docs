@@ -45,6 +45,11 @@ export default function Editor({
     }
   }, [content, editor]);
 
+  // Keep Tiptap's editable flag in sync when readOnly prop changes (e.g. user switch)
+  useEffect(() => {
+    if (editor) editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
