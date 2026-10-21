@@ -41,6 +41,17 @@ No version history. The update flow records updated_at. The table structure woul
     +- API Routes (route.ts files)
           +- @neondatabase/serverless -> Neon Postgres (via HTTP)
 
+## CI/CD and staging
+
+Due to the time constraint of this assessment, all changes were built and pushed directly to production. In a real-world project I would not work this way. Given more time I would have set up:
+
+- A **staging environment** on Vercel (a separate branch deployment pointing at a Neon branch database) so every change could be tested end-to-end before it reached users.
+- A **CI pipeline** (GitHub Actions) running type-checking, unit tests, and a headless Playwright smoke-test on every pull request, with the merge button blocked until green.
+- **Branch-based deploys** — no direct commits to master; all work done on feature branches, reviewed via pull request, merged only after CI passes.
+- **Database migrations** via a proper migration tool (e.g. Drizzle migrations or Flyway) rather than the idempotent `ALTER TABLE … IF NOT EXISTS` pattern used here, which is fine for a solo assessment but fragile in a team setting.
+
+The foundation is all there (the seed endpoint already doubles as a migration runner), but wiring it into a proper pipeline was deliberately deferred given the deadline.
+
 ## Testing approach
 
 One test file, 10 tests, covering upload validation and text-to-HTML conversion. The validation logic lives in lib/upload-validator.ts (pure functions, no DB), so it can be tested without mocking. I used Vitest because it is zero-config with ESM and TypeScript.

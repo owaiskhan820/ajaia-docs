@@ -31,7 +31,10 @@ export async function POST(req: NextRequest) {
       const result = await mammoth.convertToHtml({ buffer });
       html = result.value || "<p></p>";
     } else if (ext === ".pdf") {
-      const pdfParse = (await import("pdf-parse")).default;
+      // pdf-parse ships CJS; .default may or may not exist depending on bundler
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfMod = await import("pdf-parse") as any;
+      const pdfParse = pdfMod.default ?? pdfMod;
       const buffer = Buffer.from(await file.arrayBuffer());
       const data = await pdfParse(buffer);
       html = textToHtml(data.text);
